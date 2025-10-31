@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subject-Reference Video Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: rgb(54, 62, 79); /* 深黑色背景 */
+        }
+        #loader { display: none; }
+        /* .loading { animation: spin 2.5s linear infinite; } */
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen">
+    <div class="bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full">
+        <h1 class="text-white text-3xl font-bold mb-6 text-center">Generate videos from <br><span class="text-yellow-400">Subject-Reference</span></h1>
+        <textarea id="prompt" rows="8" class="w-full p-2 rounded-md border border-gray-600 bg-gray-700 text-white placeholder-gray-500" placeholder="Please enter wording... Text description of the video, up to 2000 characters."></textarea><br>
+        <textarea id="image_url" rows="4" class="my-4 w-full p-2 rounded-md border border-gray-600 bg-gray-700 text-white placeholder-gray-500" placeholder="https://cdn.hailuoai.com/prod/2024-09-18-16/user/multi_chat_file/9c0b5c14-ee88-4a5b-b503-4f626f018639.jpeg"></textarea><br>
+        <div>
+            <span class="text-white text-xl font-semibold mb-6 text-center pr-3">Video Model:</span>
+            <select id="model">
+                <option value="S2V-01">S2V-01</option>
+            </select>
+        </div>
+        <button id="generate-btn" class="mt-20 mb-4 w-full bg-gray-500 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200">Generate</button>
+        <div class="" style="width:30%"><img id="loader" class="loading" src="./spinner-8565_512.gif" width="100%" height="100%"></iframe></div>
+        <p id="status" class="mt-4 text-gray-300"></p>
+        <p class="mt-4 text-gray-300">Task ID: <span id="task-id"></span></p>
+        <p class="my-4 mb-5 text-gray-300">Video URL Link: <span id="download-url"></span></p>
+        <a id="download-btn" href="#" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md transition duration-200 hidden">Download Video</a>
+        </div>
+        
+    
+
+    </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+    const apiKey = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiJKb2hubnkgTGVlIiwiVXNlck5hbWUiOiJKb2hubnkgTGVlIiwiQWNjb3VudCI6IiIsIlN1YmplY3RJRCI6IjE5Nzc2MTkzNzg1MDEzMjkyMzYiLCJQaG9uZSI6IiIsIkdyb3VwSUQiOiIxOTc3NjE5Mzc4NDk3MTMwODM2IiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiam9obm55bGVlY2hldWt5YW5AZ21haWwuY29tIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTAtMzEgMDk6NTI6MDIiLCJUb2tlblR5cGUiOjEsImlzcyI6Im1pbmltYXgifQ.Fqhu2-miIUrzYMHiaTKb6FQY9YLrOT2SO5Z1ys6Y2C33yx6u5gxMYeczMjPz4vzl10P0rPDRYJcw3bqT33OSuke0JrIIrKm5bshigHmMK44lrxH9HbEBM11TYnaIJXN7TjQuh-EPZT6TKki36yqTyBMQhYFJ16-KlcLFuXv3eB8u88qUZdsD3QYR8VFEynHIuKkxEywmnaSjjJejz60lMy6ETsR26BJ9duGolY7Soxg3AEJO8kqMnpPhEmSMXiCLormZYEek3-t-8FiexOLqXbpz2FdJFig4IlNgkUFK3BpQ6JQA6vN69AP7eY5QDMsrQiLwMLg1CmeNeQBbfrakSg';  // 替換為您的 API 密鑰
+
+    document.getElementById('generate-btn').addEventListener('click', async () => {
+        const prompt = document.getElementById('prompt').value;
+        const image_url = document.getElementById('image_url').value;
+        const model = document.getElementById('model').value;
+        const statusElement = document.getElementById('status');
+        const taskIdElement = document.getElementById('task-id');
+        const loaderElement = document.getElementById('loader');
+
+        loaderElement.style.display = 'block'; // 顯示加載動畫
+
+        // 生成影片請求
+        try {
+            const createResponse = await fetch('https://api.minimax.io/v1/video_generation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    subject_reference: [{
+                        type: "character",
+                        image: [image_url]
+                        }],
+                    model: model
+                    })
+            });
+
+            const createData = await createResponse.json();
+            
+            if (createData.base_resp.status_code === 0) {
+                const taskId = createData.task_id;
+                statusElement.textContent = 'Video being generated. Please wait.';
+                taskIdElement.textContent = taskId;
+                checkStatus(taskId);
+            } else {
+                statusElement.textContent = 'Error: ' + createData.base_resp.status_msg;
+            }
+        } catch (error) {
+            console.error('An error occurred while generating the video:', error);
+            statusElement.textContent = 'Error: ' + error.message;
+        }
+    });
+
+    async function checkStatus(taskId) {
+        const statusElement = document.getElementById('status');
+
+        const interval = setInterval(async () => {
+            try {
+                const statusResponse = await fetch(`https://api.minimax.io/v1/query/video_generation?task_id=${taskId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`
+                    }
+                });
+
+                const statusData = await statusResponse.json();
+                if (statusData.base_resp.status_code === 0) {
+                    if (statusData.status === 'Success') {
+                        clearInterval(interval);
+                        const fileId = statusData.file_id;
+                        statusElement.textContent = 'The video has been generated.';
+
+                        // 取得影片下載鏈接
+                        await getDownloadLink(fileId);
+                    } else {
+                        statusElement.textContent = 'Video Status: ' + statusData.status;
+                    }
+                } else {
+                    clearInterval(interval);
+                    statusElement.textContent = 'Error: ' + statusData.base_resp.status_msg;
+                }
+            } catch (error) {
+                clearInterval(interval);
+                console.error('An error occurred while querying the status:', error);
+                statusElement.textContent = 'Error: ' + error.message;
+            }
+        }, 5000); // 每5秒查詢一次狀態
+    }
+
+    async function getDownloadLink(fileId) {
+        const downloadElement = document.getElementById('download-btn');
+        const downloadUrlElement = document.getElementById('download-url');
+        const loaderElement = document.getElementById('loader');
+        
+        try {
+            const downloadResponse = await fetch(`https://api.minimax.io/v1/files/retrieve?file_id=${fileId}`, {
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const downloadData = await downloadResponse.json();
+            loaderElement.style.display = 'none'; // 隱藏加載動畫
+            
+            if (downloadData.base_resp.status_code === 0) {
+                const downloadUrl = downloadData.file.download_url;
+                downloadElement.href = downloadUrl;
+                downloadElement.textContent = 'Dowload Video';
+                downloadElement.style.display = 'inline'; // 顯示下載按鈕
+                downloadUrlElement.textContent = downloadUrl; // 顯示影片鏈接
+                
+                
+            } else {
+                console.error('Failed to retrieve download link:', downloadData.base_resp.status_msg);
+            }
+        } catch (error) {
+            console.error('Download link request failed.:', error);
+        }
+    } 
+});
+
+
+</script>
+    
+</body>
+</html>
