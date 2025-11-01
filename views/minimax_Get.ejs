@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GET Video</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .loading { display: none; }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen bg-gray-900">
+    <div class="bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+        <h1 class="text-white text-3xl font-bold mb-6 text-center">Video<br><span class="text-yellow-400">Download</span></h1>
+        
+        <label for="task-id" class="text-white text-lg font-semibold mb-2 block">Task id:</label>
+        <input id="task-id" type="text" class="w-full p-2 rounded-md border border-gray-600 bg-gray-700 text-white placeholder-gray-500" placeholder="Please enter Task id.">
+        
+        <button id="check-status-btn" class="mt-4 w-full bg-gray-500 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200">Request Status</button>
+        
+        <div class="flex justify-center" style="width:30%">
+            <img id="loader" class="loading" src="./spinner-8565_512.gif" width="100%" height="100%" alt="Loading...">
+        </div>
+        <p id="status" class="my-8 text-gray-300 text-center"></p>
+        
+        <a id="download-btn" href="#" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md transition duration-200 mt-4 hidden inline-block">Download Video</a>
+    </div>
+
+    <script>
+        const apiKey = '<%= apiKey %>';
+
+        document.getElementById('check-status-btn').addEventListener('click', async () => {
+            const taskId = document.getElementById('task-id').value.trim();
+            if (!taskId) return alert('Please enter a Task ID.');
+
+            const statusElement = document.getElementById('status');
+            const loaderElement = document.getElementById('loader');
+            const downloadElement = document.getElementById('download-btn');
+
+            loaderElement.style.display = 'block';
+            statusElement.textContent = '';
+
+            try {
+                const statusResponse = await fetch(`https://api.minimax.io/v1/query/video_generation?task_id=${taskId}`, {
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+
+                const statusData = await statusResponse.json();
+                
+                if (statusData.base_resp.status_code === 0) {
+                    if (statusData.status === 'Success') {
+                        const fileId = statusData.file_id;
+                        statusElement.textContent = 'Success & Complete!';
+                        await getDownloadLink(fileId);
+                    } else {
+                        statusElement.textContent = 'Video Status: ' + statusData.status;
+                    }
+                } else {
+                    statusElement.textContent = 'Error: ' + statusData.base_resp.status_msg;
+                }
+            } catch (error) {
+                console.error('Query error:', error);
+                statusElement.textContent = 'Error: ' + error.message;
+            } finally {
+                setTimeout(() => loaderElement.style.display = 'none', 1000);
+            }
+        });
+
+        async function getDownloadLink(fileId) {
+            const downloadElement = document.getElementById('download-btn');
+            const loaderElement = document.getElementById('loader');
+            
+            try {
+                const downloadResponse = await fetch(`https://api.minimax.io/v1/files/retrieve?file_id=${fileId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const downloadData = await downloadResponse.json();
+                loaderElement.style.display = 'none';
+
+                if (downloadData.base_resp.status_code === 0) {
+                    const downloadUrl = downloadData.file.download_url;
+                    downloadElement.href = downloadUrl;
+                    downloadElement.textContent = 'Download Video';
+                    downloadElement.classList.remove('hidden');
+                } else {
+                    console.error('Retrieve error:', downloadData.base_resp.status_msg);
+                }
+            } catch (error) {
+                console.error('Download link error:', error);
+                loaderElement.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
