@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GET Video</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .loading { display: none; }
+        .nav-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+        }
+        .content-container {
+            margin-top: 80px; /* 根據導航欄高度調整，避免內容被遮擋 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex flex-col">
+    <!-- 導航欄：固定在頂部 -->
+    <nav class="bg-gray-800 py-4 nav-fixed">
+        <div class="container mx-auto flex justify-center space-x-8">
+        <a href="/minimax_Router/minimax_Get" class="text-yellow-400 hover:text-yellow-100">GET</a>
+        <a href="/minimax_Router/minimax_Image" class="text-yellow-400 hover:text-yellow-100">IMAGE</a>
+        <a href="/minimax_Router/minimax_Subject-Reference" class="text-yellow-400 hover:text-yellow-100">SUBJECT_REFERENCE</a>
+        <a href="/minimax_Router/minimax_Text" class="text-yellow-400 hover:text-yellow-100">TEXT</a>
+      <a href="/minimax_Router/minimax_UploadImage" class="text-yellow-400 hover:text-yellow-100">上傳圖片</a>
+      <a href="/minimax_Router/minimax_UploadImage/list" class="text-yellow-400 hover:text-yellow-100">圖片列表</a>
+        </div>
+    </nav>
+
+    <!-- 內容區域 -->
+    <div class="content-container flex items-center justify-center flex-grow">
+        <div class="bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+            <h1 class="text-white text-3xl font-bold mb-6 text-center">Video<br><span class="text-yellow-400">Download</span></h1>
+            
+            <label for="task-id" class="text-white text-lg font-semibold mb-2 block">Task id:</label>
+            <input id="task-id" type="text" class="w-full p-2 rounded-md border border-gray-600 bg-gray-700 text-white placeholder-gray-500" placeholder="請輸入 Task ID">
+            
+            <button id="check-status-btn" class="mt-4 w-full bg-gray-500 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200">查詢狀態</button>
+            
+            <div class="flex justify-center mt-4" style="width:30%">
+                <img id="loader" class="loading" src="/spinner-8565_512.gif" width="100%" height="100%" alt="載入中...">
+            </div>
+            <p id="status" class="my-8 text-gray-300 text-center"></p>
+            
+            <a id="download-btn" href="#" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md transition duration-200 mt-4 hidden inline-block">下載影片</a>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = '<%= apiKey %>';
+
+        document.getElementById('check-status-btn').addEventListener('click', async () => {
+            const taskId = document.getElementById('task-id').value.trim();
+            if (!taskId) return alert('請輸入 Task ID');
+
+            const statusElement = document.getElementById('status');
+            const loaderElement = document.getElementById('loader');
+            const downloadElement = document.getElementById('download-btn');
+
+            loaderElement.style.display = 'block';
+            statusElement.textContent = '';
+
+            try {
+                const statusResponse = await fetch(`https://api.minimax.io/v1/query/video_generation?task_id=${taskId}`, {
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+
+                const statusData = await statusResponse.json();
+                
+                if (statusData.base_resp.status_code === 0) {
+                    if (statusData.status === 'Success') {
+                        const fileId = statusData.file_id;
+                        statusElement.textContent = '成功！影片已完成！';
+                        await getDownloadLink(fileId);
+                    } else {
+                        statusElement.textContent = '影片狀態: ' + statusData.status;
+                    }
+                } else {
+                    statusElement.textContent = '錯誤: ' + statusData.base_resp.status_msg;
+                }
+            } catch (error) {
+                console.error('查詢錯誤:', error);
+                statusElement.textContent = '錯誤: ' + error.message;
+            } finally {
+                setTimeout(() => loaderElement.style.display = 'none', 1000);
+            }
+        });
+
+        async function getDownloadLink(fileId) {
+            const downloadElement = document.getElementById('download-btn');
+            const loaderElement = document.getElementById('loader');
+            
+            try {
+                const downloadResponse = await fetch(`https://api.minimax.io/v1/files/retrieve?file_id=${fileId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const downloadData = await downloadResponse.json();
+                loaderElement.style.display = 'none';
+
+                if (downloadData.base_resp.status_code === 0) {
+                    const downloadUrl = downloadData.file.download_url;
+                    downloadElement.href = downloadUrl;
+                    downloadElement.textContent = '下載影片';
+                    downloadElement.classList.remove('hidden');
+                } else {
+                    console.error('下載連結錯誤:', downloadData.base_resp.status_msg);
+                }
+            } catch (error) {
+                console.error('下載連結錯誤:', error);
+                loaderElement.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

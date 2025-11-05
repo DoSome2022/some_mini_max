@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSS 圖片列表</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .loading { display: none; }
+    .nav-fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+    }
+    .content-container {
+      margin-top: 80px;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex flex-col">
+  <!-- 導航欄 -->
+  <nav class="bg-gray-800 py-4 nav-fixed">
+    <div class="container mx-auto flex justify-center space-x-8">
+      <a href="/minimax_Router/minimax_Get" class="text-yellow-400 hover:text-yellow-100">GET</a>
+      <a href="/minimax_Router/minimax_Image" class="text-yellow-400 hover:text-yellow-100">IMAGE</a>
+      <a href="/minimax_Router/minimax_Subject-Reference" class="text-yellow-400 hover:text-yellow-100">SUBJECT_REFERENCE</a>
+      <a href="/minimax_Router/minimax_Text" class="text-yellow-400 hover:text-yellow-100">TEXT</a>
+      <a href="/minimax_Router/minimax_UploadImage" class="text-yellow-400 hover:text-yellow-100">上傳圖片</a>
+      <a href="/minimax_Router/minimax_UploadImage/list" class="text-yellow-400 hover:text-yellow-100">圖片列表</a>
+    </div>
+  </nav>
+
+  <div class="content-container flex-grow flex items-center justify-center px-4">
+    <div class="mt-8 p-4 max-w-6xl mx-auto">
+      <h1 class="text-2xl font-bold text-center mb-6">阿里雲 OSS 圖片庫</h1>
+
+      <!-- 安全的錯誤檢查 -->
+      <% if (typeof error !== 'undefined' && error) { %>
+        <p class="text-red-600 text-center"><%= error %></p>
+      <% } %>
+      
+      <% if (images.length === 0) { %>
+        <div class="text-center py-12">
+          <div class="text-6xl mb-4 text-gray-300">📷</div>
+          <p class="text-gray-600">尚未上傳任何圖片</p>
+        </div>
+      <% } else { %>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <% images.forEach(img => { %>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+              <img src="<%= img.url %>" alt="<%= img.name %>" class="w-full h-48 object-cover">
+              <div class="p-4">
+                <p class="font-medium text-gray-800 truncate"><%= img.name %></p>
+                <p class="text-sm text-gray-500"><%= img.size %> • <%= img.uploadedAt %></p>
+                <div class="mt-3 flex gap-2">
+                  <a href="<%= img.url %>" target="_blank" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-2 rounded">
+                    查看
+                  </a>
+                  <!-- 修正：使用正確的刪除路由 -->
+                  <form action="/minimax_Router/minimax_UploadImage/delete" method="POST" class="flex-1">
+                    <input type="hidden" name="key" value="<%= img.key %>">
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded"
+                            onclick="return confirm('確定刪除？')">
+                      刪除
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <div class="mt-8 text-center">
+        <a href="/minimax_Router/minimax_UploadImage" class="bg-gray-800 hover:bg-gray-700 text-white py-2 px-6 rounded-lg">
+          返回上傳
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Video Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .loading { display: none; }
+        .nav-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+        }
+        .content-container {
+            margin-top: 80px; /* 根據導航欄高度調整，避免內容被遮擋 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex flex-col">
+    <!-- 導航欄：固定在頂部 -->
+    <nav class="bg-gray-800 py-4 nav-fixed">
+        <div class="container mx-auto flex justify-center space-x-8">
+        <a href="/minimax_Router/minimax_Get" class="text-yellow-400 hover:text-yellow-100">GET</a>
+        <a href="/minimax_Router/minimax_Image" class="text-yellow-400 hover:text-yellow-100">IMAGE</a>
+        <a href="/minimax_Router/minimax_Subject-Reference" class="text-yellow-400 hover:text-yellow-100">SUBJECT_REFERENCE</a>
+        <a href="/minimax_Router/minimax_Text" class="text-yellow-400 hover:text-yellow-100">TEXT</a>
+      <a href="/minimax_Router/minimax_UploadImage" class="text-yellow-400 hover:text-yellow-100">上傳圖片</a>
+      <a href="/minimax_Router/minimax_UploadImage/list" class="text-yellow-400 hover:text-yellow-100">圖片列表</a>
+        </div>
+    </nav>
+    <div class="content-container flex-grow flex items-center justify-center px-4">
+    <div class="bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full">
+        <h1 class="text-white text-3xl font-bold mb-6 text-center">Generate videos from <br><span class="text-yellow-400">TEXT</span></h1>
+        
+        <textarea id="prompt" rows="8" class="w-full p-2 rounded-md border border-gray-600 bg-gray-700 text-white placeholder-gray-500" placeholder="Please enter wording... Text description of the video, up to 2000 characters."></textarea>
+        
+        <div class="mb-4">
+            <span class="text-white text-xl font-semibold pr-3">Video Model:</span>
+            <select id="model" class="p-2 rounded bg-gray-700 text-white border border-gray-600">
+                <option value="MiniMax-Hailuo-2.3">MiniMax-Hailuo-2.3</option>
+                <option value="MiniMax-Hailuo-02">MiniMax-Hailuo-02</option>
+            </select>
+        </div>
+        
+        <div class="mb-4">
+            <span class="text-white text-xl font-semibold pr-3">Video Resolution:</span>
+            <select id="resolution" class="p-2 rounded bg-gray-700 text-white border border-gray-600">
+                <option value="1080P">1080P</option>
+                <option value="768P">768P</option>
+            </select>
+        </div>
+        
+        <button id="generate-btn" class="mt-8 mb-4 w-full bg-gray-500 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200">Generate</button>
+        
+        <div class="flex justify-center" style="width:30%">
+            <img id="loader" src="./spinner-8565_512.gif" width="100%" height="100%" alt="Loading...">
+        </div>
+        
+        <p id="status" class="mt-4 text-gray-300"></p>
+        <p class="my-5 text-gray-300">Task ID: <span id="task-id"></span></p>
+        <p class="my-4 mb-5 text-gray-300">Video URL Link: <span id="download-url"></span></p>
+        <a id="download-btn" href="#" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md transition duration-200 hidden inline-block">Download Video</a>
+    </div>
+</div>
+    <script>
+    const apiKey = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiJKb2hubnkgTGVlIiwiVXNlck5hbWUiOiJKb2hubnkgTGVlIiwiQWNjb3VudCI6IiIsIlN1YmplY3RJRCI6IjE5Nzc2MTkzNzg1MDEzMjkyMzYiLCJQaG9uZSI6IiIsIkdyb3VwSUQiOiIxOTc3NjE5Mzc4NDk3MTMwODM2IiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiam9obm55bGVlY2hldWt5YW5AZ21haWwuY29tIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTAtMzEgMDk6NTI6MDIiLCJUb2tlblR5cGUiOjEsImlzcyI6Im1pbmltYXgifQ.Fqhu2-miIUrzYMHiaTKb6FQY9YLrOT2SO5Z1ys6Y2C33yx6u5gxMYeczMjPz4vzl10P0rPDRYJcw3bqT33OSuke0JrIIrKm5bshigHmMK44lrxH9HbEBM11TYnaIJXN7TjQuh-EPZT6TKki36yqTyBMQhYFJ16-KlcLFuXv3eB8u88qUZdsD3QYR8VFEynHIuKkxEywmnaSjjJejz60lMy6ETsR26BJ9duGolY7Soxg3AEJO8kqMnpPhEmSMXiCLormZYEek3-t-8FiexOLqXbpz2FdJFig4IlNgkUFK3BpQ6JQA6vN69AP7eY5QDMsrQiLwMLg1CmeNeQBbfrakSg';  // 替換為您的 API 密鑰
+
+        document.getElementById('generate-btn').addEventListener('click', async () => {
+            const prompt = document.getElementById('prompt').value.trim();
+            const model = document.getElementById('model').value;
+            const resolution = document.getElementById('resolution').value;
+            const statusElement = document.getElementById('status');
+            const taskIdElement = document.getElementById('task-id');
+            const loaderElement = document.getElementById('loader');
+
+            if (!prompt) return alert('Please enter a prompt.');
+
+            loaderElement.style.display = 'block';
+            statusElement.textContent = 'Submitting request...';
+
+            try {
+                const createResponse = await fetch('https://api.minimax.io/v1/video_generation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({ model, prompt, duration: 6, resolution })
+                });
+
+                const createData = await createResponse.json();
+                
+                if (createData.base_resp.status_code === 0) {
+                    const taskId = createData.task_id;
+                    statusElement.textContent = 'Video being generated. Please wait.';
+                    taskIdElement.textContent = taskId;
+                    checkStatus(taskId);
+                } else {
+                    statusElement.textContent = 'Error: ' + createData.base_resp.status_msg;
+                }
+            } catch (error) {
+                statusElement.textContent = 'Error: ' + error.message;
+            }
+        });
+
+        // Reuse shared polling logic
+        async function checkStatus(taskId) { /* Same as above */ }
+        async function getDownloadLink(fileId) { /* Same as above */ }
+    </script>
+</body>
+</html>

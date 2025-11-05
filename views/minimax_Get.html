@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GET Video</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .loading { display: none; }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen bg-gray-900">
+    <div class="bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+        <h1 class="text-white text-3xl font-bold mb-6 text-center">Video<br><span class="text-yellow-400">Download</span></h1>
+        
+        <label for="task-id" class="text-white text-lg font-semibold mb-2">Task id:</label>
+        <input id="task-id" type="text" class="w-full p-2 rounded-md border border-gray-600 bg-gray-700 text-white placeholder-gray-500" placeholder="Please enter Task id.">
+        
+        <button id="check-status-btn" class="mt-4 w-full bg-gray-500 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-md transition duration-200">Request Status</button>
+        
+        <div class="" style="width:30%"><img id="loader" class="loading" src="./spinner-8565_512.gif" width="100%" height="100%"></iframe></div>
+        <p id="status" class="my-8 text-gray-300 text-center"></p>
+        
+        <a id="download-btn" href="#" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md transition duration-200 mt-4 hidden">Download Video</a>
+    </div>
+
+    <script>
+        const apiKey = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiJKb2hubnkgTGVlIiwiVXNlck5hbWUiOiJKb2hubnkgTGVlIiwiQWNjb3VudCI6IiIsIlN1YmplY3RJRCI6IjE5Nzc2MTkzNzg1MDEzMjkyMzYiLCJQaG9uZSI6IiIsIkdyb3VwSUQiOiIxOTc3NjE5Mzc4NDk3MTMwODM2IiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoiam9obm55bGVlY2hldWt5YW5AZ21haWwuY29tIiwiQ3JlYXRlVGltZSI6IjIwMjUtMTAtMzEgMDk6NTI6MDIiLCJUb2tlblR5cGUiOjEsImlzcyI6Im1pbmltYXgifQ.Fqhu2-miIUrzYMHiaTKb6FQY9YLrOT2SO5Z1ys6Y2C33yx6u5gxMYeczMjPz4vzl10P0rPDRYJcw3bqT33OSuke0JrIIrKm5bshigHmMK44lrxH9HbEBM11TYnaIJXN7TjQuh-EPZT6TKki36yqTyBMQhYFJ16-KlcLFuXv3eB8u88qUZdsD3QYR8VFEynHIuKkxEywmnaSjjJejz60lMy6ETsR26BJ9duGolY7Soxg3AEJO8kqMnpPhEmSMXiCLormZYEek3-t-8FiexOLqXbpz2FdJFig4IlNgkUFK3BpQ6JQA6vN69AP7eY5QDMsrQiLwMLg1CmeNeQBbfrakSg';  // 替換為您的 API 密鑰
+
+        document.getElementById('check-status-btn').addEventListener('click', async () => {
+            const taskId = document.getElementById('task-id').value;
+            const statusElement = document.getElementById('status');
+            const loaderElement = document.getElementById('loader');
+            const downloadElement = document.getElementById('download-btn');
+
+            loaderElement.style.display = 'block'; // 顯示加載動畫
+            
+            try {
+                const statusResponse = await fetch(`https://api.minimax.io/v1/query/video_generation?task_id=${taskId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`
+                    }
+                });
+
+                const statusData = await statusResponse.json();
+                
+                if (statusData.base_resp.status_code === 0) {
+                    if (statusData.status === 'Success') {
+                        const fileId = statusData.file_id;
+                        statusElement.textContent = 'Success & Complete!';
+                        
+                        // 等待影片生成
+                        await getDownloadLink(fileId);
+                    } else {
+                        statusElement.textContent = 'Video Status: ' + statusData.status;
+                    }
+                } else {
+                    statusElement.textContent = 'Error: ' + statusData.base_resp.status_msg;
+                }
+            } catch (error) {
+                console.error('An error occurred while querying the status.', error);
+                statusElement.textContent = 'Error from querying: ' + error.message;
+            }
+        }, 5000); // 每5秒查詢一次狀態
+
+        async function getDownloadLink(fileId) {
+            const downloadElement = document.getElementById('download-btn');
+            const loaderElement = document.getElementById('loader');
+            
+            try {
+                const downloadResponse = await fetch(`https://api.minimax.io/v1/files/retrieve?file_id=${fileId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const downloadData = await downloadResponse.json();
+                loaderElement.style.display = 'none'; // 隱藏加載動畫
+
+
+                if (downloadData.base_resp.status_code === 0) {
+                    const downloadUrl = downloadData.file.download_url;
+                    downloadElement.href = downloadUrl;
+                    downloadElement.textContent = 'Dowload Video';
+                    downloadElement.style.display = 'inline'; // 顯示下載按鈕
+                    downloadUrlElement.textContent = downloadUrl; // 顯示影片鏈接
+                } else {
+                    console.error('An error occurred while retrieving the download link.', downloadData.base_resp.status_msg);
+                }
+            } catch (error) {
+                console.error('Error from retrieving', error);
+            }
+
+        }
+    </script>
+</body>
+</html>
